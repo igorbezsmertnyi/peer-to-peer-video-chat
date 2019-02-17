@@ -1,0 +1,83 @@
+version: 2.1
+working_directory: ~/peer-to-peer-video-chat
+executors:
+  node:
+    docker:
+      - image: circleci/node:11.2.0
+
+jobs:
+  install:
+    executor: node
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - javascript-dependencies-{{ checksum "package-lock.json" }}
+      - run:
+          name: Install dependencies
+          command: npm install
+      - save_cache:
+          paths:
+            - node_modules
+          key: javascript-dependencies-{{ checksum "package-lock.json" }}
+
+  build:
+    executor: node
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - javascript-dependencies-
+      - run:
+          name: Build project
+          command: npm run build
+      - save_cache:
+          paths:
+            - dist
+          key: static-assets-{{ checksum "dist/index.html" }}
+
+  deploy:
+    executor: node
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - static-assets-
+      - run:
+          name: Config Github user
+          command: |
+            git config --global user.email $GITHUB_EMAIL
+            git config --global user.name $GITHUB_NAME
+      - run:
+          name: Copy CI config
+          command: cp -r .circleci/ dist/.circleci
+
+      - run:
+          name: Create commit
+          command: |
+            git add -f dist
+            git commit -m "Automated deployment to GitHub Pages ${CIRCLE_SHA1}"
+      - run:
+          name: Publish project
+          command: git push https://${GITHUB_TOKEN}@github.com/igorbezsmertnyi/peer-to-peer-video-chat `git subtree split --prefix dist master`:refs/heads/gh-pages --force &> /dev/null
+
+workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - install:
+          filters:
+            branches:
+              only: master
+      - build:
+          filters:
+            branches:
+              only: master
+          requires:
+            - install
+      - deploy:
+          filters:
+            branches:
+              only: master
+          requires:
+            - build

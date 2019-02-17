@@ -1,0 +1,1 @@
+{"version":3,"sources":["src/index.js"],"names":["document","write"],"mappings":";AAAAA,SAASC,MAAM","file":"src.dbf7e5ef.map","sourceRoot":"..","sourcesContent":["document.write('Hello world')"]}
